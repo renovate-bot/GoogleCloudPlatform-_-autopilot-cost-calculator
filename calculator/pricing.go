@@ -17,346 +17,237 @@ package calculator
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
-	"golang.org/x/exp/slices"
 	"google.golang.org/api/cloudbilling/v1"
 	"google.golang.org/api/option"
 )
 
 type GCEPriceList struct {
-	// generic for all
-	Region string
+	Region string `json:"region"`
 
-	H3CpuPrice    float64
-	H3MemoryPrice float64
+	H3CpuPrice    float64 `json:"h3_cpu_price"`
+	H3MemoryPrice float64 `json:"h3_memory_price"`
 
-	C2CpuPrice     float64
-	C2MemoryPrice  float64
-	C2DCpuPrice    float64
-	C2DMemoryPrice float64
+	C2CpuPrice     float64 `json:"c2_cpu_price"`
+	C2MemoryPrice  float64 `json:"c2_memory_price"`
+	C2DCpuPrice    float64 `json:"c2d_cpu_price"`
+	C2DMemoryPrice float64 `json:"c2d_memory_price"`
 
-	G2CpuPrice    float64
-	G2MemoryPrice float64
-	A2CpuPrice    float64
-	A2MemoryPrice float64
-	A3CpuPrice    float64
-	A3MemoryPrice float64
+	G2CpuPrice    float64 `json:"g2_cpu_price"`
+	G2MemoryPrice float64 `json:"g2_memory_price"`
+	A2CpuPrice    float64 `json:"a2_cpu_price"`
+	A2MemoryPrice float64 `json:"a2_memory_price"`
+	A3CpuPrice    float64 `json:"a3_cpu_price"`
+	A3MemoryPrice float64 `json:"a3_memory_price"`
 
-	SpotC2CpuPrice     float64
-	SpotC2MemoryPrice  float64
-	SpotC2DCpuPrice    float64
-	SpotC2DMemoryPrice float64
+	SpotC2CpuPrice     float64 `json:"spot_c2_cpu_price"`
+	SpotC2MemoryPrice  float64 `json:"spot_c2_memory_price"`
+	SpotC2DCpuPrice    float64 `json:"spot_c2d_cpu_price"`
+	SpotC2DMemoryPrice float64 `json:"spot_c2d_memory_price"`
 
-	SpotG2DCpuPrice    float64
-	SpotG2DMemoryPrice float64
-	SpotA2CpuPrice     float64
-	SpotA2MemoryPrice  float64
-	SpotA3CpuPrice     float64
-	SpotA3MemoryPrice  float64
+	SpotG2DCpuPrice    float64 `json:"spot_g2d_cpu_price"`
+	SpotG2DMemoryPrice float64 `json:"spot_g2d_memory_price"`
+	SpotA2CpuPrice     float64 `json:"spot_a2_cpu_price"`
+	SpotA2MemoryPrice  float64 `json:"spot_a2_memory_price"`
+	SpotA3CpuPrice     float64 `json:"spot_a3_cpu_price"`
+	SpotA3MemoryPrice  float64 `json:"spot_a3_memory_price"`
 }
 
 type AutopilotPriceList struct {
-	// generic for all
-	Region       string
-	StoragePrice float64
+	Region       string  `json:"region"`
+	StoragePrice float64 `json:"storage_price"`
 
-	// Non-specific workloads
-	CpuPrice        float64
-	MemoryPrice     float64
-	SpotCpuPrice    float64
-	SpotMemoryPrice float64
+	// Non-specific workloads (General purpose)
+	CpuPrice        float64 `json:"cpu_price"`
+	MemoryPrice     float64 `json:"memory_price"`
+	SpotCpuPrice    float64 `json:"spot_cpu_price"`
+	SpotMemoryPrice float64 `json:"spot_memory_price"`
 
-	CpuBalancedPrice        float64
-	MemoryBalancedPrice     float64
-	SpotCpuBalancedPrice    float64
-	SpotMemoryBalancedPrice float64
+	// Balanced workloads
+	CpuBalancedPrice        float64 `json:"cpu_balanced_price"`
+	MemoryBalancedPrice     float64 `json:"memory_balanced_price"`
+	SpotCpuBalancedPrice    float64 `json:"spot_cpu_balanced_price"`
+	SpotMemoryBalancedPrice float64 `json:"spot_memory_balanced_price"`
 
-	CpuScaleoutPrice        float64
-	MemoryScaleoutPrice     float64
-	SpotCpuScaleoutPrice    float64
-	SpotMemoryScaleoutPrice float64
+	// Scale-out workloads
+	CpuScaleoutPrice        float64 `json:"cpu_scaleout_price"`
+	MemoryScaleoutPrice     float64 `json:"memory_scaleout_price"`
+	SpotCpuScaleoutPrice    float64 `json:"spot_cpu_scaleout_price"`
+	SpotMemoryScaleoutPrice float64 `json:"spot_memory_scaleout_price"`
 
-	CpuArmScaleoutPrice        float64
-	MemoryArmScaleoutPrice     float64
-	SpotArmCpuScaleoutPrice    float64
-	SpotArmMemoryScaleoutPrice float64
+	// Scale-out ARM workloads
+	CpuArmScaleoutPrice        float64 `json:"cpu_arm_scaleout_price"`
+	MemoryArmScaleoutPrice     float64 `json:"memory_arm_scaleout_price"`
+	SpotArmCpuScaleoutPrice    float64 `json:"spot_arm_cpu_scaleout_price"`
+	SpotArmMemoryScaleoutPrice float64 `json:"spot_arm_memory_scaleout_price"`
 
-	// gpu pricing
-	GPUPodvCPUPrice              float64
-	GPUPodMemoryPrice            float64
-	GPUPodLocalSSDPrice          float64
-	NVIDIAL4PodGPUPrice          float64
-	NVIDIAT4PodGPUPrice          float64
-	NVIDIAA10040GPodGPUPrice     float64
-	NVIDIAA10080GPodGPUPrice     float64
-	SpotGPUPodvCPUPrice          float64
-	SpotGPUPodMemoryPrice        float64
-	SpotGPUPodLocalSSDPrice      float64
-	SpotGPUPodPDPricePremium     float64
-	SpotNVIDIAL4PodGPUPrice      float64
-	SpotNVIDIAT4PodGPUPrice      float64
-	SpotNVIDIAA10040GPodGPUPrice float64
-	SpotNVIDIAA10080GPodGPUPrice float64
+	// GPU pricing
+	GPUPodvCPUPrice              float64 `json:"gpu_pod_vcpu_price"`
+	GPUPodMemoryPrice            float64 `json:"gpu_pod_memory_price"`
+	GPUPodLocalSSDPrice          float64 `json:"gpu_pod_local_ssd_price"`
+	NVIDIAL4PodGPUPrice          float64 `json:"nvidia_l4_pod_gpu_price"`
+	NVIDIAT4PodGPUPrice          float64 `json:"nvidia_t4_pod_gpu_price"`
+	NVIDIAA10040GPodGPUPrice     float64 `json:"nvidia_a100_40g_pod_gpu_price"`
+	NVIDIAA10080GPodGPUPrice     float64 `json:"nvidia_a100_80g_pod_gpu_price"`
+	SpotGPUPodvCPUPrice          float64 `json:"spot_gpu_pod_vcpu_price"`
+	SpotGPUPodMemoryPrice        float64 `json:"spot_gpu_pod_memory_price"`
+	SpotGPUPodLocalSSDPrice      float64 `json:"spot_gpu_pod_local_ssd_price"`
+	SpotGPUPodPDPricePremium     float64 `json:"spot_gpu_pod_pd_price_premium"`
+	SpotNVIDIAL4PodGPUPrice      float64 `json:"spot_nvidia_l4_pod_gpu_price"`
+	SpotNVIDIAT4PodGPUPrice      float64 `json:"spot_nvidia_t4_pod_gpu_price"`
+	SpotNVIDIAA10040GPodGPUPrice float64 `json:"spot_nvidia_a100_40g_pod_gpu_price"`
+	SpotNVIDIAA10080GPodGPUPrice float64 `json:"spot_nvidia_a100_80g_pod_gpu_price"`
 
-	// performance tier baseline pricing
-	PerformanceCpuPricePremium          float64
-	PerformanceMemoryPricePremium       float64
-	PerformancePDPricePremium           float64
-	PerformanceLocalSSDPricePremium     float64
-	SpotPerformanceCpuPricePremium      float64
-	SpotPerformanceMemoryPricePremium   float64
-	SpotPerformancePDPricePremium       float64
-	SpotPerformanceLocalSSDPricePremium float64
+	// Performance tier baseline pricing
+	PerformanceCpuPricePremium          float64 `json:"performance_cpu_price_premium"`
+	PerformanceMemoryPricePremium       float64 `json:"performance_memory_price_premium"`
+	PerformancePDPricePremium           float64 `json:"performance_pd_price_premium"`
+	PerformanceLocalSSDPricePremium     float64 `json:"performance_local_ssd_price_premium"`
+	SpotPerformanceCpuPricePremium      float64 `json:"spot_performance_cpu_price_premium"`
+	SpotPerformanceMemoryPricePremium   float64 `json:"spot_performance_memory_price_premium"`
+	SpotPerformancePDPricePremium       float64 `json:"spot_performance_pd_price_premium"`
+	SpotPerformanceLocalSSDPricePremium float64 `json:"spot_performance_local_ssd_price_premium"`
 
-	// accelerator tier baseline pricing
-	AcceleratorCpuPricePremium            float64
-	AcceleratorMemoryGPUPricePremium      float64
-	AcceleratorPDPricePremium             float64
-	AcceleratorLocalSSDPricePremium       float64
-	AcceleratorT4GPUPricePremium          float64
-	AcceleratorL4GPUPricePremium          float64
-	AcceleratorA10040GGPUPricePremium     float64
-	AcceleratorA10080GGPUPricePremium     float64
-	AcceleratorH100GPUPricePremium        float64
-	SpotAcceleratorCpuPricePremium        float64
-	SpotAcceleratorMemoryGPUPricePremium  float64
-	SpotAcceleratorPDPricePremium         float64
-	SpotAcceleratorLocalSSDPricePremium   float64
-	SpotAcceleratorT4GPUPricePremium      float64
-	SpotAcceleratorL4GPUPricePremium      float64
-	SpotAcceleratorA10040GGPUPricePremium float64
-	SpotAcceleratorA10080GGPUPricePremium float64
-	SpotAcceleratorH100GPUPricePremium    float64
+	// Accelerator tier baseline pricing
+	AcceleratorCpuPricePremium            float64 `json:"accelerator_cpu_price_premium"`
+	AcceleratorMemoryGPUPricePremium      float64 `json:"accelerator_memory_gpu_price_premium"`
+	AcceleratorPDPricePremium             float64 `json:"accelerator_pd_price_premium"`
+	AcceleratorLocalSSDPricePremium       float64 `json:"accelerator_local_ssd_price_premium"`
+	AcceleratorT4GPUPricePremium          float64 `json:"accelerator_t4_gpu_price_premium"`
+	AcceleratorL4GPUPricePremium          float64 `json:"accelerator_l4_gpu_price_premium"`
+	AcceleratorA10040GGPUPricePremium     float64 `json:"accelerator_a100_40g_gpu_price_premium"`
+	AcceleratorA10080GGPUPricePremium     float64 `json:"accelerator_a100_80g_gpu_price_premium"`
+	AcceleratorH100GPUPricePremium        float64 `json:"accelerator_h100_gpu_price_premium"`
+	SpotAcceleratorCpuPricePremium        float64 `json:"spot_accelerator_cpu_price_premium"`
+	SpotAcceleratorMemoryGPUPricePremium  float64 `json:"spot_accelerator_memory_gpu_price_premium"`
+	SpotAcceleratorPDPricePremium         float64 `json:"spot_accelerator_pd_price_premium"`
+	SpotAcceleratorLocalSSDPricePremium   float64 `json:"spot_accelerator_local_ssd_price_premium"`
+	SpotAcceleratorT4GPUPricePremium      float64 `json:"spot_accelerator_t4_gpu_price_premium"`
+	SpotAcceleratorL4GPUPricePremium      float64 `json:"spot_accelerator_l4_gpu_price_premium"`
+	SpotAcceleratorA10040GGPUPricePremium float64 `json:"spot_accelerator_a100_40g_gpu_price_premium"`
+	SpotAcceleratorA10080GGPUPricePremium float64 `json:"spot_accelerator_a100_80g_gpu_price_premium"`
+	SpotAcceleratorH100GPUPricePremium    float64 `json:"spot_accelerator_h100_gpu_price_premium"`
 }
 
-func GetGCEPricing(sku string, region string) (GCEPriceList, error) {
-	pricing := GCEPriceList{
-		Region:         region,
-		H3CpuPrice:     0,
-		H3MemoryPrice:  0,
-		C2CpuPrice:     0,
-		C2MemoryPrice:  0,
-		C2DCpuPrice:    0,
-		C2DMemoryPrice: 0,
-
-		G2CpuPrice:    0,
-		G2MemoryPrice: 0,
-		A2CpuPrice:    0,
-		A2MemoryPrice: 0,
-		A3CpuPrice:    0,
-		A3MemoryPrice: 0,
-
-		SpotC2CpuPrice:     0,
-		SpotC2MemoryPrice:  0,
-		SpotC2DCpuPrice:    0,
-		SpotC2DMemoryPrice: 0,
-
-		SpotG2DCpuPrice:    0,
-		SpotG2DMemoryPrice: 0,
-		SpotA2CpuPrice:     0,
-		SpotA2MemoryPrice:  0,
-		SpotA3CpuPrice:     0,
-		SpotA3MemoryPrice:  0,
+func NormalizeRegion(region string) string {
+	parts := strings.Split(region, "-")
+	if len(parts) > 2 {
+		return strings.Join(parts[:len(parts)-1], "-")
 	}
+	return region
+}
 
-	// If the "region" is actual "zone", we need to remove the zone to get the pricing for the whole region.
-	if len(strings.Split(region, "-")) > 2 {
-		region = strings.Join(
-			strings.Split(region, "-")[:len(
-				strings.Split(
-					region,
-					"-",
-				),
-			)-1],
-			"-",
-		)
-	}
-
-	ctx := context.Background()
+func GetGCEPricing(ctx context.Context, sku string, region string) (GCEPriceList, error) {
+	region = NormalizeRegion(region)
+	pricing := GCEPriceList{Region: region}
 
 	cloudbillingService, err := cloudbilling.NewService(ctx, option.WithScopes(cloudbilling.CloudPlatformScope))
 	if err != nil {
-		err = fmt.Errorf("unable to initialize cloud billing service: %v", err)
-		return GCEPriceList{}, err
+		return GCEPriceList{}, fmt.Errorf("unable to initialize cloud billing service: %w", err)
 	}
 
 	err = cloudbillingService.Services.Skus.List("services/"+sku).CurrencyCode("USD").Pages(ctx, func(pricingInfo *cloudbilling.ListSkusResponse) error {
-		for _, sku := range pricingInfo.Skus {
-			if !slices.Contains(sku.ServiceRegions, region) {
+		for _, skuItem := range pricingInfo.Skus {
+			if !slices.Contains(skuItem.ServiceRegions, region) {
+				continue
+			}
+			if len(skuItem.PricingInfo) == 0 || len(skuItem.PricingInfo[0].PricingExpression.TieredRates) == 0 {
 				continue
 			}
 
-			decimal := sku.PricingInfo[0].PricingExpression.TieredRates[0].UnitPrice.Units * 1000000000
-			mantissa := sku.PricingInfo[0].PricingExpression.TieredRates[0].UnitPrice.Nanos * int64(sku.PricingInfo[0].PricingExpression.DisplayQuantity)
-
+			rate := skuItem.PricingInfo[0].PricingExpression.TieredRates[0]
+			decimal := rate.UnitPrice.Units * 1000000000
+			mantissa := rate.UnitPrice.Nanos * int64(skuItem.PricingInfo[0].PricingExpression.DisplayQuantity)
 			price := float64(decimal+mantissa) / 1000000000
 
 			switch {
-			case strings.HasPrefix(sku.Description, "H3 Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "H3 Instance Core"):
 				pricing.H3CpuPrice = price
-			case strings.HasPrefix(sku.Description, "H3 Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "H3 Instance Ram"):
 				pricing.H3MemoryPrice = price
 
-			case strings.HasPrefix(sku.Description, "Compute optimized Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "Compute optimized Instance Core"):
 				pricing.C2CpuPrice = price
-			case strings.HasPrefix(sku.Description, "Compute optimized Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "Compute optimized Instance Ram"):
 				pricing.C2MemoryPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible Compute optimized Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible Compute optimized Instance Core"):
 				pricing.SpotC2CpuPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible Compute optimized Instance Ram"):
-
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible Compute optimized Instance Ram"):
 				pricing.SpotC2MemoryPrice = price
-			case strings.HasPrefix(sku.Description, "C2D AMD Instance Core"):
+
+			case strings.HasPrefix(skuItem.Description, "C2D AMD Instance Core"):
 				pricing.C2DCpuPrice = price
-			case strings.HasPrefix(sku.Description, "C2D AMD Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "C2D AMD Instance Ram"):
 				pricing.C2DMemoryPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible C2D AMD Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible C2D AMD Instance Core"):
 				pricing.SpotC2DCpuPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible C2D AMD Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible C2D AMD Instance Ram"):
 				pricing.SpotC2DMemoryPrice = price
 
-			case strings.HasPrefix(sku.Description, "G2 Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "G2 Instance Core"):
 				pricing.G2CpuPrice = price
-			case strings.HasPrefix(sku.Description, "G2 Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "G2 Instance Ram"):
 				pricing.G2MemoryPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible G2 Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible G2 Instance Core"):
 				pricing.SpotG2DCpuPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible G2 Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible G2 Instance Ram"):
 				pricing.SpotG2DMemoryPrice = price
 
-			case strings.HasPrefix(sku.Description, "A2 Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "A2 Instance Core"):
 				pricing.A2CpuPrice = price
-			case strings.HasPrefix(sku.Description, "A2 Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "A2 Instance Ram"):
 				pricing.A2MemoryPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible A2 Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible A2 Instance Core"):
 				pricing.SpotA2CpuPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible A2 Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible A2 Instance Ram"):
 				pricing.SpotA2MemoryPrice = price
 
-			case strings.HasPrefix(sku.Description, "A3 Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "A3 Instance Core"):
 				pricing.A3CpuPrice = price
-			case strings.HasPrefix(sku.Description, "A3 Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "A3 Instance Ram"):
 				pricing.A3MemoryPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible A3 Instance Core"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible A3 Instance Core"):
 				pricing.SpotA3CpuPrice = price
-			case strings.HasPrefix(sku.Description, "Spot Preemptible A3 Instance Ram"):
+			case strings.HasPrefix(skuItem.Description, "Spot Preemptible A3 Instance Ram"):
 				pricing.SpotA3MemoryPrice = price
-
 			}
-
 		}
-
 		return nil
 	})
 
 	if err != nil {
-		err = fmt.Errorf("unable to fetch gce cloud billing information: %v", err)
-		return GCEPriceList{}, err
+		return GCEPriceList{}, fmt.Errorf("unable to fetch GCE cloud billing information: %w", err)
 	}
 
 	return pricing, nil
 }
 
-func GetAutopilotPricing(sku string, region string) (AutopilotPriceList, error) {
-	// Init all to zeroes
-	pricing := AutopilotPriceList{
-		Region:                     region,
-		StoragePrice:               0,
-		CpuPrice:                   0,
-		MemoryPrice:                0,
-		SpotCpuPrice:               0,
-		SpotMemoryPrice:            0,
-		CpuBalancedPrice:           0,
-		MemoryBalancedPrice:        0,
-		SpotCpuBalancedPrice:       0,
-		SpotMemoryBalancedPrice:    0,
-		CpuScaleoutPrice:           0,
-		MemoryScaleoutPrice:        0,
-		SpotCpuScaleoutPrice:       0,
-		SpotMemoryScaleoutPrice:    0,
-		CpuArmScaleoutPrice:        0,
-		MemoryArmScaleoutPrice:     0,
-		SpotArmCpuScaleoutPrice:    0,
-		SpotArmMemoryScaleoutPrice: 0,
-
-		GPUPodvCPUPrice:              0,
-		GPUPodMemoryPrice:            0,
-		GPUPodLocalSSDPrice:          0,
-		NVIDIAL4PodGPUPrice:          0,
-		NVIDIAT4PodGPUPrice:          0,
-		NVIDIAA10040GPodGPUPrice:     0,
-		NVIDIAA10080GPodGPUPrice:     0,
-		SpotGPUPodvCPUPrice:          0,
-		SpotGPUPodMemoryPrice:        0,
-		SpotGPUPodLocalSSDPrice:      0,
-		SpotNVIDIAL4PodGPUPrice:      0,
-		SpotNVIDIAT4PodGPUPrice:      0,
-		SpotNVIDIAA10040GPodGPUPrice: 0,
-		SpotNVIDIAA10080GPodGPUPrice: 0,
-
-		PerformanceCpuPricePremium:          0,
-		PerformanceMemoryPricePremium:       0,
-		PerformancePDPricePremium:           0,
-		PerformanceLocalSSDPricePremium:     0,
-		SpotPerformanceCpuPricePremium:      0,
-		SpotPerformanceMemoryPricePremium:   0,
-		SpotPerformancePDPricePremium:       0,
-		SpotPerformanceLocalSSDPricePremium: 0,
-
-		AcceleratorCpuPricePremium:            0,
-		AcceleratorMemoryGPUPricePremium:      0,
-		AcceleratorPDPricePremium:             0,
-		AcceleratorLocalSSDPricePremium:       0,
-		AcceleratorT4GPUPricePremium:          0,
-		AcceleratorL4GPUPricePremium:          0,
-		AcceleratorA10040GGPUPricePremium:     0,
-		AcceleratorA10080GGPUPricePremium:     0,
-		AcceleratorH100GPUPricePremium:        0,
-		SpotAcceleratorCpuPricePremium:        0,
-		SpotAcceleratorMemoryGPUPricePremium:  0,
-		SpotAcceleratorPDPricePremium:         0,
-		SpotAcceleratorLocalSSDPricePremium:   0,
-		SpotAcceleratorT4GPUPricePremium:      0,
-		SpotAcceleratorL4GPUPricePremium:      0,
-		SpotAcceleratorA10040GGPUPricePremium: 0,
-		SpotAcceleratorA10080GGPUPricePremium: 0,
-		SpotAcceleratorH100GPUPricePremium:    0,
-	}
-
-	// If the "region" is actual "zone", we need to remove the zone to get the pricing for the whole region.
-	if len(strings.Split(region, "-")) > 2 {
-		region = strings.Join(
-			strings.Split(region, "-")[:len(
-				strings.Split(
-					region,
-					"-",
-				),
-			)-1],
-			"-",
-		)
-	}
-
-	ctx := context.Background()
+func GetAutopilotPricing(ctx context.Context, sku string, region string) (AutopilotPriceList, error) {
+	region = NormalizeRegion(region)
+	pricing := AutopilotPriceList{Region: region}
 
 	cloudbillingService, err := cloudbilling.NewService(ctx, option.WithScopes(cloudbilling.CloudPlatformScope))
 	if err != nil {
-		err = fmt.Errorf("unable to initialize cloud billing service: %v", err)
-		return AutopilotPriceList{}, err
+		return AutopilotPriceList{}, fmt.Errorf("unable to initialize cloud billing service: %w", err)
 	}
 
 	err = cloudbillingService.Services.Skus.List("services/"+sku).CurrencyCode("USD").Pages(ctx, func(pricingInfo *cloudbilling.ListSkusResponse) error {
-		for _, sku := range pricingInfo.Skus {
-			if !slices.Contains(sku.ServiceRegions, region) {
+		for _, skuItem := range pricingInfo.Skus {
+			if !slices.Contains(skuItem.ServiceRegions, region) {
+				continue
+			}
+			if len(skuItem.PricingInfo) == 0 || len(skuItem.PricingInfo[0].PricingExpression.TieredRates) == 0 {
 				continue
 			}
 
-			decimal := sku.PricingInfo[0].PricingExpression.TieredRates[0].UnitPrice.Units * 1000000000
-			mantissa := sku.PricingInfo[0].PricingExpression.TieredRates[0].UnitPrice.Nanos * int64(sku.PricingInfo[0].PricingExpression.DisplayQuantity)
-
+			rate := skuItem.PricingInfo[0].PricingExpression.TieredRates[0]
+			decimal := rate.UnitPrice.Units * 1000000000
+			mantissa := rate.UnitPrice.Nanos * int64(skuItem.PricingInfo[0].PricingExpression.DisplayQuantity)
 			price := float64(decimal+mantissa) / 1000000000
 
-			switch sku.Description {
+			switch skuItem.Description {
 			case "Autopilot Pod Ephemeral Storage Requests (" + region + ")":
 				pricing.StoragePrice = price
 
@@ -378,10 +269,10 @@ func GetAutopilotPricing(sku string, region string) (AutopilotPriceList, error) 
 			case "Autopilot Scale-Out x86 Pod mCPU Requests (" + region + ")":
 				pricing.CpuScaleoutPrice = price
 
-			case "Autopilot Scale-Out Arm Spot Pod Memory Requests (" + region + ")":
+			case "Autopilot Scale-Out Arm Pod Memory Requests (" + region + ")":
 				pricing.MemoryArmScaleoutPrice = price
 
-			case "Autopilot Scale-Out Arm Spot Pod mCPU Requests (" + region + ")":
+			case "Autopilot Scale-Out Arm Pod mCPU Requests (" + region + ")":
 				pricing.CpuArmScaleoutPrice = price
 
 			case "Autopilot Spot Pod Memory Requests (" + region + ")":
@@ -408,16 +299,18 @@ func GetAutopilotPricing(sku string, region string) (AutopilotPriceList, error) 
 			case "Autopilot Scale-Out Arm Spot Pod mCPU Requests (" + region + ")":
 				pricing.SpotArmCpuScaleoutPrice = price
 
-			case "Autopilot NVIDIA T4 Pod mCPU Requests (" + region + ")":
-			case "Autopilot NVIDIA L4 Pod mCPU Requests (" + region + ")":
-			case "Autopilot NVIDIA A100 Pod mCPU Requests (" + region + ")":
-			case "Autopilot NVIDIA A100 80GB Pod mCPU Requests (" + region + ")":
+			case "Autopilot NVIDIA T4 Pod mCPU Requests (" + region + ")",
+				"Autopilot NVIDIA L4 Pod mCPU Requests (" + region + ")",
+				"Autopilot NVIDIA A100 Pod mCPU Requests (" + region + ")",
+				"Autopilot NVIDIA A100 80GB Pod mCPU Requests (" + region + ")":
 				pricing.GPUPodvCPUPrice = price
-			case "Autopilot NVIDIA T4 Pod Memory Requests (" + region + ")":
-			case "Autopilot NVIDIA L4 Pod Memory Requests (" + region + ")":
-			case "Autopilot NVIDIA A100 Pod Memory Requests (" + region + ")":
-			case "Autopilot NVIDIA A100 80GB Pod Memory Requests (" + region + ")":
+
+			case "Autopilot NVIDIA T4 Pod Memory Requests (" + region + ")",
+				"Autopilot NVIDIA L4 Pod Memory Requests (" + region + ")",
+				"Autopilot NVIDIA A100 Pod Memory Requests (" + region + ")",
+				"Autopilot NVIDIA A100 80GB Pod Memory Requests (" + region + ")":
 				pricing.GPUPodMemoryPrice = price
+
 			case "Autopilot NVIDIA T4 Pod GPU Requests (" + region + ")":
 				pricing.NVIDIAT4PodGPUPrice = price
 			case "Autopilot NVIDIA L4 Pod GPU Requests (" + region + ")":
@@ -427,26 +320,28 @@ func GetAutopilotPricing(sku string, region string) (AutopilotPriceList, error) 
 			case "Autopilot NVIDIA A100 80GB Pod GPU Requests (" + region + ")":
 				pricing.NVIDIAA10080GPodGPUPrice = price
 			case "Autopilot GPU Pod Local SSD (" + region + ")":
-				pricing.SpotGPUPodLocalSSDPrice = price
+				pricing.GPUPodLocalSSDPrice = price
 
-			case "Autopilot NVIDIA T4 Spot Pod mCPU Requests (" + region + ")":
-			case "Autopilot NVIDIA L4 Spot Pod mCPU Requests (" + region + ")":
-			case "Autopilot NVIDIA A100 Spot Pod mCPU Requests (" + region + ")":
-			case "Autopilot NVIDIA A100 80GB Spot Pod mCPU Requests (" + region + ")":
-				pricing.GPUPodvCPUPrice = price
-			case "Autopilot NVIDIA T4 Spot Pod Memory Requests (" + region + ")":
-			case "Autopilot NVIDIA L4 Spot Pod Memory Requests (" + region + ")":
-			case "Autopilot NVIDIA A100 Spot Pod Memory Requests (" + region + ")":
-			case "Autopilot NVIDIA A100 80GB Spot Pod Memory Requests (" + region + ")":
-				pricing.GPUPodMemoryPrice = price
+			case "Autopilot NVIDIA T4 Spot Pod mCPU Requests (" + region + ")",
+				"Autopilot NVIDIA L4 Spot Pod mCPU Requests (" + region + ")",
+				"Autopilot NVIDIA A100 Spot Pod mCPU Requests (" + region + ")",
+				"Autopilot NVIDIA A100 80GB Spot Pod mCPU Requests (" + region + ")":
+				pricing.SpotGPUPodvCPUPrice = price
+
+			case "Autopilot NVIDIA T4 Spot Pod Memory Requests (" + region + ")",
+				"Autopilot NVIDIA L4 Spot Pod Memory Requests (" + region + ")",
+				"Autopilot NVIDIA A100 Spot Pod Memory Requests (" + region + ")",
+				"Autopilot NVIDIA A100 80GB Spot Pod Memory Requests (" + region + ")":
+				pricing.SpotGPUPodMemoryPrice = price
+
 			case "Autopilot NVIDIA T4 Spot Pod GPU Requests (" + region + ")":
-				pricing.NVIDIAT4PodGPUPrice = price
+				pricing.SpotNVIDIAT4PodGPUPrice = price
 			case "Autopilot NVIDIA L4 Spot Pod GPU Requests (" + region + ")":
-				pricing.NVIDIAL4PodGPUPrice = price
+				pricing.SpotNVIDIAL4PodGPUPrice = price
 			case "Autopilot NVIDIA A100 Spot Pod GPU Requests (" + region + ")":
-				pricing.NVIDIAA10040GPodGPUPrice = price
+				pricing.SpotNVIDIAA10040GPodGPUPrice = price
 			case "Autopilot NVIDIA A100 80GB Spot Pod GPU Requests (" + region + ")":
-				pricing.NVIDIAA10080GPodGPUPrice = price
+				pricing.SpotNVIDIAA10080GPodGPUPrice = price
 			case "Autopilot GPU Spot Pod Local SSD (" + region + ")":
 				pricing.SpotGPUPodLocalSSDPrice = price
 
@@ -465,9 +360,7 @@ func GetAutopilotPricing(sku string, region string) (AutopilotPriceList, error) 
 				pricing.AcceleratorLocalSSDPricePremium = price
 
 			case "Autopilot Spot PD Balanced Premium (" + region + ")":
-				pricing.PerformancePDPricePremium = price
 				pricing.SpotPerformancePDPricePremium = price
-				pricing.AcceleratorPDPricePremium = price
 				pricing.SpotAcceleratorPDPricePremium = price
 
 			case "Autopilot Performance Spot CPU Premium (" + region + ")":
@@ -513,9 +406,94 @@ func GetAutopilotPricing(sku string, region string) (AutopilotPriceList, error) 
 	})
 
 	if err != nil {
-		err = fmt.Errorf("unable to fetch autopilot cloud billing information: %v", err)
-		return AutopilotPriceList{}, err
+		return AutopilotPriceList{}, fmt.Errorf("unable to fetch Autopilot cloud billing information: %w", err)
 	}
 
 	return pricing, nil
+}
+
+// GetMockPricing returns representative pricing rates for us-central1 (useful for testing and demo mode)
+func GetMockPricing(region string) (AutopilotPriceList, GCEPriceList) {
+	if region == "" {
+		region = "us-central1"
+	}
+
+	ap := AutopilotPriceList{
+		Region:                  region,
+		StoragePrice:            0.0000706,
+		CpuPrice:                0.0573,
+		MemoryPrice:             0.0063421,
+		CpuBalancedPrice:       0.0831,
+		MemoryBalancedPrice:    0.0091933,
+		CpuScaleoutPrice:       0.0722,
+		MemoryScaleoutPrice:    0.0079911,
+		CpuArmScaleoutPrice:    0.0515,
+		MemoryArmScaleoutPrice: 0.005700,
+
+		SpotCpuPrice:            0.0172,
+		SpotMemoryPrice:         0.0019026,
+		SpotCpuBalancedPrice:    0.0249,
+		SpotMemoryBalancedPrice: 0.002758,
+		SpotCpuScaleoutPrice:    0.0217,
+		SpotMemoryScaleoutPrice: 0.0023973,
+		SpotArmCpuScaleoutPrice: 0.01545,
+		SpotArmMemoryScaleoutPrice: 0.00171,
+
+		GPUPodvCPUPrice:          0.071,
+		GPUPodMemoryPrice:        0.0078,
+		GPUPodLocalSSDPrice:      0.0001,
+		NVIDIAL4PodGPUPrice:      0.6783,
+		NVIDIAT4PodGPUPrice:      0.3500,
+		NVIDIAA10040GPodGPUPrice: 2.9339,
+		NVIDIAA10080GPodGPUPrice: 3.6738,
+
+		SpotGPUPodvCPUPrice:          0.0213,
+		SpotGPUPodMemoryPrice:        0.00234,
+		SpotGPUPodLocalSSDPrice:      0.00003,
+		SpotNVIDIAL4PodGPUPrice:      0.2035,
+		SpotNVIDIAT4PodGPUPrice:      0.1272,
+		SpotNVIDIAA10040GPodGPUPrice: 0.8802,
+		SpotNVIDIAA10080GPodGPUPrice: 1.1021,
+
+		PerformanceCpuPricePremium:      0.0100,
+		PerformanceMemoryPricePremium:   0.0011,
+		PerformancePDPricePremium:       0.00005,
+		PerformanceLocalSSDPricePremium: 0.00008,
+
+		AcceleratorCpuPricePremium:        0.0120,
+		AcceleratorMemoryGPUPricePremium:  0.0013,
+		AcceleratorT4GPUPricePremium:      0.3500,
+		AcceleratorL4GPUPricePremium:      0.6783,
+		AcceleratorA10040GGPUPricePremium: 2.9339,
+		AcceleratorA10080GGPUPricePremium: 3.6738,
+		AcceleratorH100GPUPricePremium:    4.9500,
+	}
+
+	gce := GCEPriceList{
+		Region:             region,
+		H3CpuPrice:         0.045,
+		H3MemoryPrice:      0.005,
+		C2CpuPrice:         0.040,
+		C2MemoryPrice:      0.0054,
+		C2DCpuPrice:        0.038,
+		C2DMemoryPrice:     0.0051,
+		G2CpuPrice:         0.042,
+		G2MemoryPrice:      0.0056,
+		A2CpuPrice:         0.045,
+		A2MemoryPrice:      0.0060,
+		A3CpuPrice:         0.050,
+		A3MemoryPrice:      0.0067,
+		SpotC2CpuPrice:     0.012,
+		SpotC2MemoryPrice:  0.0016,
+		SpotC2DCpuPrice:    0.011,
+		SpotC2DMemoryPrice: 0.0015,
+		SpotG2DCpuPrice:    0.013,
+		SpotG2DMemoryPrice: 0.0017,
+		SpotA2CpuPrice:     0.014,
+		SpotA2MemoryPrice:  0.0018,
+		SpotA3CpuPrice:     0.015,
+		SpotA3MemoryPrice:  0.0020,
+	}
+
+	return ap, gce
 }

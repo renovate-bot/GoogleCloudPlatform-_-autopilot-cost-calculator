@@ -15,8 +15,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"log"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/autopilot-cost-calculator/calculator"
@@ -36,7 +39,6 @@ var (
 )
 
 func TestMain(m *testing.M) {
-
 	// Setting mocked pricing
 	autopilotPricing = calculator.AutopilotPriceList{
 		Region:       "test-region-1",
@@ -107,7 +109,7 @@ func TestMain(m *testing.M) {
 		SpotAcceleratorH100GPUPricePremium:    0,
 	}
 
-	GCEPricing := calculator.GCEPriceList{
+	gcePricing = calculator.GCEPriceList{
 		Region:         "test-region-1",
 		H3CpuPrice:     0,
 		H3MemoryPrice:  0,
@@ -140,13 +142,13 @@ func TestMain(m *testing.M) {
 	var err error
 	config, err = ini.Load("config.ini")
 	if err != nil {
-		log.Fatalf("Fail to read file: %v", err)
+		log.Fatalf("Failed to read configuration: %v", err)
 	}
 
 	// Setting the service for the tests
 	service = calculator.PricingService{
 		AutopilotPricing: autopilotPricing,
-		GCEPricing:       GCEPricing,
+		GCEPricing:       gcePricing,
 		Config:           config,
 	}
 
@@ -183,7 +185,6 @@ func TestValidateAndRoundResources(t *testing.T) {
 	if cpu != cpuWant || memory != memoryWant || storage != storageWant {
 		t.Fatalf(`ValidateAndRoundResources(1650, 1700, 900) = %d, %d, %d doesn't match expected %d %d %d`, cpu, memory, storage, cpuWant, memoryWant, storageWant)
 	}
-
 }
 
 func TestDecideComputeClass(t *testing.T) {
@@ -210,39 +211,125 @@ func TestDecideComputeClass(t *testing.T) {
 	if computeClass != computeClassWant {
 		t.Fatalf(`DecideComputeClass(25000, 50000, true) = %s doesn't match expected %s`, cluster.ComputeClasses[computeClass], cluster.ComputeClasses[computeClassWant])
 	}
-
 }
 
 func TestCalculatePricing(t *testing.T) {
-
 	// Test Case #1
-
 	computeClass := service.DecideComputeClass("test-pod", "e2-standard-4", 4000, 16000, 0, "", false)
-	priceWant := 0.3313796 // 0.000706 (cpu price * 4) + 0.1014736 (memory price * 16) +0.2292 (storage price * 10)
+	priceWant := 0.3313796
 	price := service.CalculatePricing(4000, 16000, 10000, 0, "", computeClass, "e2-standard-4", false)
 
 	if !almostEqual(price, priceWant) {
-		t.Fatalf(`CalculatePricing(4000, 16000, 10000, {test-region-pricing}, %s, false) = %.7f doesn't match expected %.7f`, cluster.ComputeClasses[computeClass], price, priceWant)
+		t.Fatalf(`CalculatePricing = %.7f doesn't match expected %.7f`, price, priceWant)
 	}
 
 	// Test Case #2
 	computeClass = service.DecideComputeClass("test-pod", "e2-standard-4", 40000, 80000, 0, "", false)
-	priceWant = 4.0601700 // 3.324 (cpu price * 40) + 0.735464 (memory price * 80) + 0.2292 (storage price * 10)
+	priceWant = 4.0601700
 	price = service.CalculatePricing(40000, 80000, 10000, 0, "", computeClass, "e2-standard-4", false)
 
 	if !almostEqual(price, priceWant) {
-		t.Fatalf(`CalculatePricing(4000, 16000, 10000, {test-region-pricing}, %s, false) = %.7f doesn't match expected %.7f`, cluster.ComputeClasses[computeClass], price, priceWant)
+		t.Fatalf(`CalculatePricing = %.7f doesn't match expected %.7f`, price, priceWant)
 	}
 
 	// Test Case #3
 	computeClass = service.DecideComputeClass("test-pod", "e2-standard-4", 25000, 100000, 0, "", false)
-	priceWant = 0.6209660 // 0.43 (cpu spot price * 25) + 0.19026 (spot memory price * 100) + 0.000706 (spot storage price * 10)
+	priceWant = 0.6209660
 	price = service.CalculatePricing(25000, 100000, 10000, 0, "", computeClass, "e2-standard-4", true)
 
 	if !almostEqual(price, priceWant) {
-		t.Fatalf(`CalculatePricing(4000, 16000, 10000, {test-region-pricing}, %s, false) = %.7f doesn't match expected %.7f`, cluster.ComputeClasses[computeClass], price, priceWant)
+		t.Fatalf(`CalculatePricing = %.7f doesn't match expected %.7f`, price, priceWant)
+	}
+}
+
+func TestCalculateSummary(t *testing.T) {
+	info, nodes := cluster.GetDemoClusterData()
+	if info.Name == "" || len(nodes) == 0 {
+		t.Fatalf("Demo data returned empty info or nodes")
 	}
 
+	var workloads []cluster.Workload
+	for _, node := range nodes {
+		workloads = append(workloads, node.Workloads...)
+	}
+
+	summary := service.CalculateSummary(nodes, workloads, 0.80, 0.55, 0.10)
+
+	if summary.TotalWorkloads != len(workloads) {
+		t.Errorf("Expected %d workloads, got %d", len(workloads), summary.TotalWorkloads)
+	}
+	if summary.TotalNodes != len(nodes) {
+		t.Errorf("Expected %d nodes, got %d", len(nodes), summary.TotalNodes)
+	}
+	if summary.HourlyTotalOnDemand <= 0 {
+		t.Errorf("Expected HourlyTotalOnDemand > 0, got %f", summary.HourlyTotalOnDemand)
+	}
+	if summary.MonthlyTotalOnDemand <= 0 {
+		t.Errorf("Expected MonthlyTotalOnDemand > 0, got %f", summary.MonthlyTotalOnDemand)
+	}
+	if summary.Hourly1YearCommit >= summary.HourlyTotalOnDemand {
+		t.Errorf("Expected 1-year commit cost to be lower than on-demand, got %f vs %f", summary.Hourly1YearCommit, summary.HourlyTotalOnDemand)
+	}
+	if summary.Hourly3YearCommit >= summary.Hourly1YearCommit {
+		t.Errorf("Expected 3-year commit cost to be lower than 1-year commit, got %f vs %f", summary.Hourly3YearCommit, summary.Hourly1YearCommit)
+	}
+	if summary.Savings1YearPercentage <= 0 || summary.Savings3YearPercentage <= 0 {
+		t.Errorf("Expected positive savings percentages, got 1Y: %f, 3Y: %f", summary.Savings1YearPercentage, summary.Savings3YearPercentage)
+	}
+}
+
+func TestExportFormats(t *testing.T) {
+	info, nodes := cluster.GetDemoClusterData()
+	var workloads []cluster.Workload
+	for _, node := range nodes {
+		workloads = append(workloads, node.Workloads...)
+	}
+	summary := service.CalculateSummary(nodes, workloads, 0.80, 0.55, 0.10)
+
+	// JSON Export test
+	var jsonBuf bytes.Buffer
+	if err := ExportJSON(&jsonBuf, nodes, summary, info); err != nil {
+		t.Fatalf("ExportJSON failed: %v", err)
+	}
+	var jsonParsed map[string]interface{}
+	if err := json.Unmarshal(jsonBuf.Bytes(), &jsonParsed); err != nil {
+		t.Fatalf("ExportJSON produced invalid JSON: %v", err)
+	}
+
+	// CSV Export test
+	var csvBuf bytes.Buffer
+	if err := ExportCSV(&csvBuf, nodes, summary); err != nil {
+		t.Fatalf("ExportCSV failed: %v", err)
+	}
+	csvContent := csvBuf.String()
+	if !strings.Contains(csvContent, "Workload") || !strings.Contains(csvContent, "HourlyCostUSD") {
+		t.Errorf("ExportCSV missing expected headers, got:\n%s", csvContent)
+	}
+
+	// Markdown Export test
+	var mdBuf bytes.Buffer
+	if err := ExportMarkdown(&mdBuf, nodes, summary, info); err != nil {
+		t.Fatalf("ExportMarkdown failed: %v", err)
+	}
+	mdContent := mdBuf.String()
+	if !strings.Contains(mdContent, "# GKE Autopilot Cost Calculator Report") || !strings.Contains(mdContent, "Executive Cost Summary") {
+		t.Errorf("ExportMarkdown missing expected content, got:\n%s", mdContent)
+	}
+}
+
+func TestComputeClassHelpers(t *testing.T) {
+	if cluster.ComputeClassGeneralPurpose.String() != "General-purpose" {
+		t.Errorf("Expected General-purpose, got %s", cluster.ComputeClassGeneralPurpose.String())
+	}
+	if cluster.ComputeClassGPUPod.Badge() != "GPU Pod" {
+		t.Errorf("Expected GPU Pod, got %s", cluster.ComputeClassGPUPod.Badge())
+	}
+	if renderComputeClassBadge(cluster.ComputeClassBalanced) == "" {
+		t.Errorf("renderComputeClassBadge returned empty string")
+	}
+	if renderSpotBadge(true) == "" || renderSpotBadge(false) == "" {
+		t.Errorf("renderSpotBadge returned empty string")
+	}
 }
 
 func almostEqual(a, b float64) bool {
